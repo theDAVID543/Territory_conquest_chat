@@ -1,0 +1,11 @@
+name: Territory-Conquest-Chat
+version: '${project.version}'
+main: thedavid.territoryconquestchat.Territory_Conquest_Chat
+api-version: 1.19
+soft depends: [DiscordSRV,ProtocolLib]
+commands:
+  channel:
+    aliases:
+      - "ch"
+    description: "choose channel to listen"
+    usage: "/ch <channel>"
