@@ -2,7 +2,7 @@ name: Territory-Conquest-Chat
 version: '${project.version}'
 main: thedavid.territoryconquestchat.Territory_Conquest_Chat
 api-version: 1.19
-soft depends: [DiscordSRV,ProtocolLib]
+soft depends: [DiscordSRV,ProtocolLib, PlaceholderAPI]
 commands:
   channel:
     aliases:
