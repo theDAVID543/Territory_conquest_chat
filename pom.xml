@@ -114,5 +114,11 @@
             <version>2.11.3</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>com.loohp</groupId>
+            <artifactId>InteractiveChatDiscordSrvAddon</artifactId>
+            <version>4.2.6.1</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 </project>

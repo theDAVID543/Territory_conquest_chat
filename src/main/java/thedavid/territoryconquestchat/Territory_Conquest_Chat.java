@@ -1,16 +1,25 @@
 package thedavid.territoryconquestchat;
 
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
+import com.loohp.interactivechat.InteractiveChat;
+import com.loohp.interactivechat.api.InteractiveChatAPI;
+import com.loohp.interactivechat.proxy.velocity.InteractiveChatVelocity;
 import com.loohp.interactivechat.utils.ChatColorUtils;
+import com.loohp.interactivechatdiscordsrvaddon.InteractiveChatDiscordSrvAddon;
+import com.loohp.interactivechatdiscordsrvaddon.api.InteractiveChatDiscordSrvAddonAPI;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
 import github.scarsz.discordsrv.util.DiscordUtil;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import me.clip.placeholderapi.PlaceholderAPI;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
-import org.bukkit.Color;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -19,6 +28,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.plugin.messaging.PluginMessageListener;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
 
@@ -27,13 +38,35 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
     public static Set<Player> tradeChannelPlayers = new HashSet<>();
     public static Set<Player> adChannelPlayers = new HashSet<>();
     public static Set<Player> qaChannelPlayers = new HashSet<>();
+    public static Map<UUID, Integer> tradeChannelPlayersTime = new HashMap<>();
+    public static Map<UUID, Integer> adChannelPlayersTime = new HashMap<>();
+    public static Map<UUID, Integer> qaChannelPlayersTime = new HashMap<>();
+
+    static JavaPlugin plugin;
 
     @Override
     public void onEnable() {
         // Plugin startup logic
+        plugin = this;
         getServer().getPluginManager().registerEvents(this, this);
         DiscordSRV.api.subscribe(discordsrvListener);
         Objects.requireNonNull(Bukkit.getPluginCommand("channel")).setExecutor(this);
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for(OfflinePlayer player : Bukkit.getOfflinePlayers()){
+                    if(!Objects.equals(tradeChannelPlayersTime.get(player.getUniqueId()),null) && tradeChannelPlayersTime.get(player.getUniqueId()) >= 0){
+                        tradeChannelPlayersTime.put(player.getUniqueId(),tradeChannelPlayersTime.get(player.getUniqueId())-1);
+                    }
+                    if(!Objects.equals(adChannelPlayersTime.get(player.getUniqueId()),null) && adChannelPlayersTime.get(player.getUniqueId()) >= 0){
+                        adChannelPlayersTime.put(player.getUniqueId(),adChannelPlayersTime.get(player.getUniqueId())-1);
+                    }
+                    if(!Objects.equals(qaChannelPlayersTime.get(player.getUniqueId()),null) && qaChannelPlayersTime.get(player.getUniqueId()) >= 0){
+                        qaChannelPlayersTime.put(player.getUniqueId(),qaChannelPlayersTime.get(player.getUniqueId())-1);
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0,20);
     }
 
     @Override
@@ -44,72 +77,135 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
     @EventHandler
     public void onChat(AsyncChatEvent e){
         String chatText = PlainTextComponentSerializer.plainText().serialize(e.message());
+        String prefix = PlaceholderAPI.setPlaceholders(e.getPlayer(), "%vault_prefix%");
+        String coloredPrefix = ChatColorUtils.translateAlternateColorCodes('&',prefix);
+        String painPrefix = prefix
+                .replace("&0","")
+                .replace("&1","")
+                .replace("&2","")
+                .replace("&3","")
+                .replace("&4","")
+                .replace("&5","")
+                .replace("&6","")
+                .replace("&7","")
+                .replace("&8","")
+                .replace("&9","")
+                .replace("&a","")
+                .replace("&b","")
+                .replace("&c","")
+                .replace("&d","")
+                .replace("&e","")
+                .replace("&f","")
+                .replace("&k","")
+                .replace("&l","")
+                .replace("&m","")
+                .replace("&n","")
+                .replace("&o","")
+                .replace("&r","");
         if(chatText.charAt(0) == '$'){
-            String changed = chatText.substring(1);
-            TextChannel channel = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("trade");
-            DiscordUtil.queueMessage(channel, e.getPlayer().getName() + " » " + changed);
-            if(!tradeChannelPlayers.contains(e.getPlayer())){
-                tradeChannelPlayers.add(e.getPlayer());
+            if(Objects.equals(tradeChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || tradeChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
+                String changed = chatText.substring(1);
+                TextChannel dev = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("dev");
+                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),changed,"trade",false,e);
+                DiscordUtil.queueMessage(dev,"trade" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + changed);
+                if(!tradeChannelPlayers.contains(e.getPlayer())){
+                    tradeChannelPlayers.add(e.getPlayer());
+                    e.getPlayer().sendMessage(
+                            Component.text("觀看 ")
+                                    .append(Component.text("交易頻道(trade)").color(NamedTextColor.GOLD))
+                                    .append(Component.text("中"))
+                    );
+                }
+                sendChannel("trade",e.getPlayer().getName(), changed, coloredPrefix);
+                tradeChannelPlayersTime.put(e.getPlayer().getUniqueId(), 300);
+                Bukkit.getLogger().info(String.valueOf(e.getPlayer().getUniqueId()));
+                e.setCancelled(true);
+            }else{
                 e.getPlayer().sendMessage(
-                        Component.text("觀看 ")
-                                .append(Component.text("交易頻道(trade)").color(NamedTextColor.GOLD))
-                                .append(Component.text("中"))
+                        Component.text("需等待 ").color(TextColor.color(NamedTextColor.RED))
+                                .append(Component.text(tradeChannelPlayersTime.get(e.getPlayer().getUniqueId())))
+                                .append(Component.text(" 秒後才可再次在此頻道發送訊息"))
                 );
+                e.setCancelled(true);
             }
-            sendChannel("trade",e.getPlayer(), changed);
-            e.setCancelled(true);
         }
         if(chatText.charAt(0) == '!'){
-            String changed = chatText.substring(1);
-            TextChannel channel = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("ad");
-            DiscordUtil.queueMessage(channel, e.getPlayer().getName() + " » " + changed);
-            if(!adChannelPlayers.contains(e.getPlayer())){
-                adChannelPlayers.add(e.getPlayer());
+            if(Objects.equals(adChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || adChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
+                String changed = chatText.substring(1);
+                TextChannel channel = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("ad");
+                DiscordUtil.queueMessage(channel, prefix + e.getPlayer().getName() + " » " + changed);
+                if(!adChannelPlayers.contains(e.getPlayer())){
+                    adChannelPlayers.add(e.getPlayer());
+                    e.getPlayer().sendMessage(
+                            Component.text("觀看 ")
+                                    .append(Component.text("設施宣傳頻道(ad)").color(NamedTextColor.AQUA))
+                                    .append(Component.text("中"))
+                    );
+                }
+                sendChannel("ad",e.getPlayer().getName(), changed, coloredPrefix);
+                adChannelPlayersTime.put(e.getPlayer().getUniqueId(), 300);
+                e.setCancelled(true);
+            }else{
                 e.getPlayer().sendMessage(
-                        Component.text("觀看 ")
-                                .append(Component.text("設施宣傳頻道(ad)").color(NamedTextColor.AQUA))
-                                .append(Component.text("中"))
+                        Component.text("需等待 ").color(TextColor.color(NamedTextColor.RED))
+                                .append(Component.text(adChannelPlayersTime.get(e.getPlayer().getUniqueId())))
+                                .append(Component.text(" 秒後才可再次在此頻道發送訊息"))
                 );
+                e.setCancelled(true);
             }
-            sendChannel("ad",e.getPlayer(), changed);
-            e.setCancelled(true);
         }
         if(chatText.charAt(0) == '?'){
-            String changed = chatText.substring(1);
-            TextChannel channel = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("qa");
-            DiscordUtil.queueMessage(channel, e.getPlayer().getName() + " » " + changed);
-            if(!qaChannelPlayers.contains(e.getPlayer())){
-                qaChannelPlayers.add(e.getPlayer());
+            if(Objects.equals(qaChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || qaChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
+                String changed = chatText.substring(1);
+                TextChannel channel = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("qa");
+                DiscordUtil.queueMessage(channel, prefix + e.getPlayer().getName() + " » " + changed);
+                if(!qaChannelPlayers.contains(e.getPlayer())){
+                    qaChannelPlayers.add(e.getPlayer());
+                    e.getPlayer().sendMessage(
+                            Component.text("觀看 ")
+                                    .append(Component.text("問答頻道(ad)").color(NamedTextColor.BLUE))
+                                    .append(Component.text("中"))
+                    );
+                }
+                sendChannel("qa",e.getPlayer().getName(), changed, coloredPrefix);
+                qaChannelPlayersTime.put(e.getPlayer().getUniqueId(), 3);
+                e.setCancelled(true);
+            }else{
                 e.getPlayer().sendMessage(
-                        Component.text("觀看 ")
-                                .append(Component.text("問答頻道(ad)").color(NamedTextColor.BLUE))
-                                .append(Component.text("中"))
+                        Component.text("需等待 ").color(TextColor.color(NamedTextColor.RED))
+                                .append(Component.text(qaChannelPlayersTime.get(e.getPlayer().getUniqueId())))
+                                .append(Component.text(" 秒後才可再次在此頻道發送訊息"))
                 );
+                e.setCancelled(true);
             }
-            sendChannel("qa",e.getPlayer(), changed);
-            e.setCancelled(true);
         }
     }
-    public static void sendChannel(String channel, Player sendPlayer, String message){
-        String prefix = PlaceholderAPI.setPlaceholders(sendPlayer, "%vault_prefix%");
-        String coloredPrefix = ChatColorUtils.translateAlternateColorCodes('&',prefix);
+    public static void sendChannel(String channel, String sendPlayer, String message, String prefix){
         if(Objects.equals(channel, "trade")){
             for(Player player : tradeChannelPlayers){
                 player.sendMessage(
                         Component.text("$ ").color(NamedTextColor.GOLD)
-                                .append(Component.text(coloredPrefix))
-                                .append(Component.text(sendPlayer.getName()).color(NamedTextColor.WHITE))
+                                .append(Component.text(prefix))
+                                .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
                                 .append(Component.text("> ").color(NamedTextColor.GRAY))
                                 .append(Component.text(message).color(NamedTextColor.WHITE))
                 );
+//                InteractiveChatVelocity.sendMessage(sendPlayer,
+//                        (com.loohp.interactivechat.libs.net.kyori.adventure.text.Component)
+//                                Component.text("$ ").color(NamedTextColor.GOLD)
+//                                .append(Component.text(prefix))
+//                                .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
+//                                .append(Component.text("> ").color(NamedTextColor.GRAY))
+//                                .append(Component.text(message).color(NamedTextColor.WHITE))
+//                );
             }
         }
         if(Objects.equals(channel, "ad")){
             for(Player player : adChannelPlayers){
                 player.sendMessage(
                         Component.text("! ").color(NamedTextColor.AQUA)
-                                .append(Component.text(coloredPrefix))
-                                .append(Component.text(sendPlayer.getName()).color(NamedTextColor.WHITE))
+                                .append(Component.text(prefix))
+                                .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
                                 .append(Component.text("> ").color(NamedTextColor.GRAY))
                                 .append(Component.text(message).color(NamedTextColor.WHITE))
                 );
@@ -119,8 +215,8 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
             for(Player player : qaChannelPlayers){
                 player.sendMessage(
                         Component.text("? ").color(NamedTextColor.BLUE)
-                                .append(Component.text(coloredPrefix))
-                                .append(Component.text(sendPlayer.getName()).color(NamedTextColor.WHITE))
+                                .append(Component.text(prefix))
+                                .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
                                 .append(Component.text("> ").color(NamedTextColor.GRAY))
                                 .append(Component.text(message).color(NamedTextColor.WHITE))
                 );
@@ -206,5 +302,4 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
         adChannelPlayers.add(e.getPlayer());
         qaChannelPlayers.add(e.getPlayer());
     }
-
 }
