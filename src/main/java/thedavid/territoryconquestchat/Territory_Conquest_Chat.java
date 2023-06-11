@@ -6,6 +6,7 @@ import com.loohp.interactivechat.proxy.velocity.InteractiveChatVelocity;
 import com.loohp.interactivechat.utils.ChatColorUtils;
 import com.loohp.interactivechatdiscordsrvaddon.InteractiveChatDiscordSrvAddon;
 import com.loohp.interactivechatdiscordsrvaddon.libs.com.intellij.uiDesigner.compiler.Utils;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
 import github.scarsz.discordsrv.util.DiscordUtil;
@@ -184,6 +185,7 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                 DiscordUtil.queueMessage(dev,"global" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + chatText);
                 sendChannel("global",e.getPlayer().getName(), chatText, coloredPrefix);
                 globalChannelPlayersTime.put(e.getPlayer().getUniqueId(), 3);
+                ableToSend.put(e.getPlayer(),true);
                 e.setCancelled(true);
             }else{
                 e.getPlayer().sendMessage(
@@ -191,10 +193,12 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                                 .append(Component.text(globalChannelPlayersTime.get(e.getPlayer().getUniqueId())))
                                 .append(Component.text(" 秒後才可再次在此頻道發送訊息"))
                 );
+                ableToSend.put(e.getPlayer(),false);
                 e.setCancelled(true);
             }
         }
     }
+    public static Map<Player, Boolean> ableToSend = new HashMap<>();
     public static void sendChannel(String channel, String sendPlayer, String message, String prefix){
         if(Objects.equals(channel, "trade")){
             for(Player player : tradeChannelPlayers){

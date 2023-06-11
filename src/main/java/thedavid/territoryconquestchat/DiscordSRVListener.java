@@ -116,6 +116,9 @@ public class DiscordSRVListener {
             if(chat[1].charAt(0) == '?'){
                 event.setCancelled(true);
             }
+            if(Objects.equals(Territory_Conquest_Chat.ableToSend.get(event.getPlayer()),false)){
+                event.setCancelled(true);
+            }
         }
     }
     @Subscribe(priority = ListenerPriority.HIGHEST)
