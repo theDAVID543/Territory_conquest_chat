@@ -1,19 +1,16 @@
 package thedavid.territoryconquestchat;
 
-import com.google.common.io.ByteArrayDataOutput;
-import com.google.common.io.ByteStreams;
 import com.loohp.interactivechat.InteractiveChat;
 import com.loohp.interactivechat.api.InteractiveChatAPI;
 import com.loohp.interactivechat.proxy.velocity.InteractiveChatVelocity;
 import com.loohp.interactivechat.utils.ChatColorUtils;
 import com.loohp.interactivechatdiscordsrvaddon.InteractiveChatDiscordSrvAddon;
-import com.loohp.interactivechatdiscordsrvaddon.api.InteractiveChatDiscordSrvAddonAPI;
+import com.loohp.interactivechatdiscordsrvaddon.libs.com.intellij.uiDesigner.compiler.Utils;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
 import github.scarsz.discordsrv.util.DiscordUtil;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import me.clip.placeholderapi.PlaceholderAPI;
-import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -28,7 +25,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
@@ -38,6 +34,7 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
     public static Set<Player> tradeChannelPlayers = new HashSet<>();
     public static Set<Player> adChannelPlayers = new HashSet<>();
     public static Set<Player> qaChannelPlayers = new HashSet<>();
+    public static Map<UUID, Integer> globalChannelPlayersTime = new HashMap<>();
     public static Map<UUID, Integer> tradeChannelPlayersTime = new HashMap<>();
     public static Map<UUID, Integer> adChannelPlayersTime = new HashMap<>();
     public static Map<UUID, Integer> qaChannelPlayersTime = new HashMap<>();
@@ -63,6 +60,9 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                     }
                     if(!Objects.equals(qaChannelPlayersTime.get(player.getUniqueId()),null) && qaChannelPlayersTime.get(player.getUniqueId()) >= 0){
                         qaChannelPlayersTime.put(player.getUniqueId(),qaChannelPlayersTime.get(player.getUniqueId())-1);
+                    }
+                    if(!Objects.equals(globalChannelPlayersTime.get(player.getUniqueId()),null) && globalChannelPlayersTime.get(player.getUniqueId()) >= 0){
+                        globalChannelPlayersTime.put(player.getUniqueId(),globalChannelPlayersTime.get(player.getUniqueId())-1);
                     }
                 }
             }
@@ -118,7 +118,6 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                 }
                 sendChannel("trade",e.getPlayer().getName(), changed, coloredPrefix);
                 tradeChannelPlayersTime.put(e.getPlayer().getUniqueId(), 300);
-                Bukkit.getLogger().info(String.valueOf(e.getPlayer().getUniqueId()));
                 e.setCancelled(true);
             }else{
                 e.getPlayer().sendMessage(
@@ -128,12 +127,12 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                 );
                 e.setCancelled(true);
             }
-        }
-        if(chatText.charAt(0) == '!'){
+        }else if(chatText.charAt(0) == '!'){
             if(Objects.equals(adChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || adChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
                 String changed = chatText.substring(1);
-                TextChannel channel = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("ad");
-                DiscordUtil.queueMessage(channel, prefix + e.getPlayer().getName() + " » " + changed);
+                TextChannel dev = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("dev");
+                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),changed,"ad",false,e);
+                DiscordUtil.queueMessage(dev,"ad" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + changed);
                 if(!adChannelPlayers.contains(e.getPlayer())){
                     adChannelPlayers.add(e.getPlayer());
                     e.getPlayer().sendMessage(
@@ -153,17 +152,17 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                 );
                 e.setCancelled(true);
             }
-        }
-        if(chatText.charAt(0) == '?'){
+        }else if(chatText.charAt(0) == '?'){
             if(Objects.equals(qaChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || qaChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
                 String changed = chatText.substring(1);
-                TextChannel channel = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("qa");
-                DiscordUtil.queueMessage(channel, prefix + e.getPlayer().getName() + " » " + changed);
+                TextChannel dev = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("dev");
+                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),changed,"qa",false,e);
+                DiscordUtil.queueMessage(dev,"qa" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + changed);
                 if(!qaChannelPlayers.contains(e.getPlayer())){
                     qaChannelPlayers.add(e.getPlayer());
                     e.getPlayer().sendMessage(
                             Component.text("觀看 ")
-                                    .append(Component.text("問答頻道(ad)").color(NamedTextColor.BLUE))
+                                    .append(Component.text("問答頻道(qa)").color(NamedTextColor.BLUE))
                                     .append(Component.text("中"))
                     );
                 }
@@ -174,6 +173,22 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                 e.getPlayer().sendMessage(
                         Component.text("需等待 ").color(TextColor.color(NamedTextColor.RED))
                                 .append(Component.text(qaChannelPlayersTime.get(e.getPlayer().getUniqueId())))
+                                .append(Component.text(" 秒後才可再次在此頻道發送訊息"))
+                );
+                e.setCancelled(true);
+            }
+        }else{
+            if(Objects.equals(globalChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || globalChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
+                TextChannel dev = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("dev");
+//                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),chatText,"global",false,e);
+                DiscordUtil.queueMessage(dev,"global" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + chatText);
+                sendChannel("global",e.getPlayer().getName(), chatText, coloredPrefix);
+                globalChannelPlayersTime.put(e.getPlayer().getUniqueId(), 3);
+                e.setCancelled(true);
+            }else{
+                e.getPlayer().sendMessage(
+                        Component.text("需等待 ").color(TextColor.color(NamedTextColor.RED))
+                                .append(Component.text(globalChannelPlayersTime.get(e.getPlayer().getUniqueId())))
                                 .append(Component.text(" 秒後才可再次在此頻道發送訊息"))
                 );
                 e.setCancelled(true);
@@ -190,14 +205,6 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                                 .append(Component.text("> ").color(NamedTextColor.GRAY))
                                 .append(Component.text(message).color(NamedTextColor.WHITE))
                 );
-//                InteractiveChatVelocity.sendMessage(sendPlayer,
-//                        (com.loohp.interactivechat.libs.net.kyori.adventure.text.Component)
-//                                Component.text("$ ").color(NamedTextColor.GOLD)
-//                                .append(Component.text(prefix))
-//                                .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
-//                                .append(Component.text("> ").color(NamedTextColor.GRAY))
-//                                .append(Component.text(message).color(NamedTextColor.WHITE))
-//                );
             }
         }
         if(Objects.equals(channel, "ad")){
@@ -215,6 +222,17 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
             for(Player player : qaChannelPlayers){
                 player.sendMessage(
                         Component.text("? ").color(NamedTextColor.BLUE)
+                                .append(Component.text(prefix))
+                                .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
+                                .append(Component.text("> ").color(NamedTextColor.GRAY))
+                                .append(Component.text(message).color(NamedTextColor.WHITE))
+                );
+            }
+        }
+        if(Objects.equals(channel, "global")){
+            for(Player player : Bukkit.getOnlinePlayers()){
+                player.sendMessage(
+                        Component.text("").color(NamedTextColor.GOLD)
                                 .append(Component.text(prefix))
                                 .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
                                 .append(Component.text("> ").color(NamedTextColor.GRAY))
