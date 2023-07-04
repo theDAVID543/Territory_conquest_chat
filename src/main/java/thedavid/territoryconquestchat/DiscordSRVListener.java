@@ -3,13 +3,15 @@ package thedavid.territoryconquestchat;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.api.ListenerPriority;
 import github.scarsz.discordsrv.api.Subscribe;
-import github.scarsz.discordsrv.api.events.DiscordConsoleCommandPreProcessEvent;
 import github.scarsz.discordsrv.api.events.DiscordGuildMessagePostProcessEvent;
 import github.scarsz.discordsrv.api.events.DiscordGuildMessageReceivedEvent;
 import github.scarsz.discordsrv.api.events.GameChatMessagePostProcessEvent;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.Message;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
 import github.scarsz.discordsrv.util.DiscordUtil;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
@@ -39,8 +41,7 @@ public class DiscordSRVListener {
                 } else {
                     Territory_Conquest_Chat.tradeChannelPlayersTime.put(link.get(e.getAuthor().getId()), 300);
                 }
-            }
-            if (e.getChannel().getId().equals("1114819096719147008")) {
+            }else if (e.getChannel().getId().equals("1114819096719147008")) {
                 if (!Objects.equals(Territory_Conquest_Chat.adChannelPlayersTime.get(link.get(e.getAuthor().getId())), null) && Territory_Conquest_Chat.adChannelPlayersTime.get(link.get(e.getAuthor().getId())) >= 0) {
                     DiscordUtil.deleteMessage(e.getMessage());
                     DiscordUtil.privateMessage(e.getAuthor(),
@@ -50,19 +51,17 @@ public class DiscordSRVListener {
                 } else {
                     Territory_Conquest_Chat.adChannelPlayersTime.put(link.get(e.getAuthor().getId()), 300);
                 }
-            }
-            if (e.getChannel().getId().equals("1114819138481836064")) {
-                if (!Objects.equals(Territory_Conquest_Chat.qaChannelPlayersTime.get(link.get(e.getAuthor().getId())), null) && Territory_Conquest_Chat.qaChannelPlayersTime.get(link.get(e.getAuthor().getId())) >= 0) {
-                    DiscordUtil.deleteMessage(e.getMessage());
-                    DiscordUtil.privateMessage(e.getAuthor(),
-                            "需等待 " + Territory_Conquest_Chat.qaChannelPlayersTime.get(link.get(e.getAuthor().getId())) + " 秒後才可再次在此頻道發送訊息"
-                    );
-                    return;
-                } else {
-                    Territory_Conquest_Chat.qaChannelPlayersTime.put(link.get(e.getAuthor().getId()), 3);
-                }
-            }
-            if (e.getChannel().getId().equals("1111272413670428683")) {
+//            }else if (e.getChannel().getId().equals("1114819138481836064")) {
+//                if (!Objects.equals(Territory_Conquest_Chat.qaChannelPlayersTime.get(link.get(e.getAuthor().getId())), null) && Territory_Conquest_Chat.qaChannelPlayersTime.get(link.get(e.getAuthor().getId())) >= 0) {
+//                    DiscordUtil.deleteMessage(e.getMessage());
+//                    DiscordUtil.privateMessage(e.getAuthor(),
+//                            "需等待 " + Territory_Conquest_Chat.qaChannelPlayersTime.get(link.get(e.getAuthor().getId())) + " 秒後才可再次在此頻道發送訊息"
+//                    );
+//                    return;
+//                } else {
+//                    Territory_Conquest_Chat.qaChannelPlayersTime.put(link.get(e.getAuthor().getId()), 3);
+//                }
+            }else if (e.getChannel().getId().equals("1111272413670428683")) {
                 if (!Objects.equals(Territory_Conquest_Chat.globalChannelPlayersTime.get(link.get(e.getAuthor().getId())), null) && Territory_Conquest_Chat.globalChannelPlayersTime.get(link.get(e.getAuthor().getId())) >= 0) {
                     DiscordUtil.deleteMessage(e.getMessage());
                     DiscordUtil.privateMessage(e.getAuthor(),
@@ -76,28 +75,29 @@ public class DiscordSRVListener {
             }
         }
 
-        String message = e.getMessage().getContentDisplay();
+        String message = e.getMessage().getContentRaw();
+        Component messageC = PlainTextComponentSerializer.plainText().deserialize(message);
         TextChannel global = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("global");
-        message = message.replace("\\_","_").replace("\\*","*").replace("\\~","~").replace("\\|","|").replace("\\>",">");
+//        message = message.replace("\\_","_").replace("\\*","*").replace("\\~","~").replace("\\|","|").replace("\\>",">");
         if(e.getChannel().getId().equals("1117070276144943104")) {
             String[] chat = message.split("\\|",4);
-            Bukkit.getLogger().info(message);
+            Component c = GsonComponentSerializer.gson().deserialize(chat[3]);
             if(Objects.equals(chat[0], "trade")){
                 Territory_Conquest_Chat.tradeChannelPlayersTime.put(Bukkit.getOfflinePlayer(chat[2]).getUniqueId(),300);
             }else if(Objects.equals(chat[0], "ad")){
                 Territory_Conquest_Chat.adChannelPlayersTime.put(Bukkit.getOfflinePlayer(chat[2]).getUniqueId(),300);
-            }else if(Objects.equals(chat[0], "qa")){
-                Territory_Conquest_Chat.qaChannelPlayersTime.put(Bukkit.getOfflinePlayer(chat[2]).getUniqueId(),3);
+//            }else if(Objects.equals(chat[0], "qa")){
+//                Territory_Conquest_Chat.qaChannelPlayersTime.put(Bukkit.getOfflinePlayer(chat[2]).getUniqueId(),3);
             }else if(Objects.equals(chat[0], "global")){
                 Territory_Conquest_Chat.globalChannelPlayersTime.put(Bukkit.getOfflinePlayer(chat[2]).getUniqueId(),3);
             }
-            Territory_Conquest_Chat.sendChannel(chat[0],chat[2],chat[3],chat[1]);
+            Territory_Conquest_Chat.sendChannel(chat[0],chat[2],c,chat[1]);
         }else if(e.getChannel().getId().equals("1114819065589026827") && !e.getAuthor().isBot()){
-            Territory_Conquest_Chat.sendChannel("trade", "§9[DC]§r" + e.getAuthor().getName(),message,"");
+            Territory_Conquest_Chat.sendChannel("trade", "§9[DC]§r" + e.getAuthor().getName(),messageC,"");
         }else if(e.getChannel().getId().equals("1114819096719147008") && !e.getAuthor().isBot()){
-            Territory_Conquest_Chat.sendChannel("ad", "§9[DC]§r" + e.getAuthor().getName(),message,"");
-        }else if(e.getChannel().getId().equals("1114819138481836064") && !e.getAuthor().isBot()){
-            Territory_Conquest_Chat.sendChannel("qa", "§9[DC]§r" + e.getAuthor().getName(),message,"");
+            Territory_Conquest_Chat.sendChannel("ad", "§9[DC]§r" + e.getAuthor().getName(),messageC,"");
+//        }else if(e.getChannel().getId().equals("1114819138481836064") && !e.getAuthor().isBot()){
+//            Territory_Conquest_Chat.sendChannel("qa", "§9[DC]§r" + e.getAuthor().getName(),messageC,"");
         }else if(e.getChannel().getId().equals("1111272413670428683") && !e.getAuthor().isBot()){
 //            Territory_Conquest_Chat.sendChannel("global", "§9[DC]§r" + e.getAuthor().getName(),message,"");
         }
@@ -106,17 +106,13 @@ public class DiscordSRVListener {
     public void discordMessageProcessed(GameChatMessagePostProcessEvent event) {
         String message = String.valueOf(event.getProcessedMessage());
         if(message.contains("» ") && Objects.equals(event.getChannel(), "global")) {
-            String[] chat = message.split("» ");
-            if(chat[1].charAt(0) == '$'){
+            String[] chat = message.split("» ",2);
+            if(Objects.equals(chat[1],"")){
                 event.setCancelled(true);
+                return;
             }
-            if(chat[1].charAt(0) == '!'){
-                event.setCancelled(true);
-            }
-            if(chat[1].charAt(0) == '?'){
-                event.setCancelled(true);
-            }
-            if(Objects.equals(Territory_Conquest_Chat.ableToSend.get(event.getPlayer()),false)){
+//            if(chat[1].charAt(0) == '$' || chat[1].charAt(0) == '!' || chat[1].charAt(0) == '?' || Objects.equals(Territory_Conquest_Chat.ableToSend.get(event.getPlayer()),false)){
+            if(chat[1].charAt(0) == '$' || chat[1].charAt(0) == '!' || Objects.equals(Territory_Conquest_Chat.ableToSend.get(event.getPlayer()),false)){
                 event.setCancelled(true);
             }
         }

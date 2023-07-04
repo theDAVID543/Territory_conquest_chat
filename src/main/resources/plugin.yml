@@ -9,3 +9,12 @@ commands:
       - "ch"
     description: "choose channel to listen"
     usage: "/ch <channel>"
+permissions:
+  tcc.color:
+    description: "can use color in chat"
+    default: op
+  tcc.decoration:
+    description: "can use decoration in chat"
+    default: op
+
+

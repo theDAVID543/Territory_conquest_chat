@@ -2,11 +2,8 @@ package thedavid.territoryconquestchat;
 
 import com.loohp.interactivechat.InteractiveChat;
 import com.loohp.interactivechat.api.InteractiveChatAPI;
-import com.loohp.interactivechat.proxy.velocity.InteractiveChatVelocity;
 import com.loohp.interactivechat.utils.ChatColorUtils;
 import com.loohp.interactivechatdiscordsrvaddon.InteractiveChatDiscordSrvAddon;
-import com.loohp.interactivechatdiscordsrvaddon.libs.com.intellij.uiDesigner.compiler.Utils;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.dependencies.jda.api.entities.TextChannel;
 import github.scarsz.discordsrv.util.DiscordUtil;
@@ -15,6 +12,8 @@ import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -23,6 +22,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -75,9 +75,37 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
         // Plugin shutdown logic
         DiscordSRV.api.unsubscribe(discordsrvListener);
     }
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST,ignoreCancelled = true)
     public void onChat(AsyncChatEvent e){
+        if(e.message().equals(Component.text())){
+            e.setCancelled(true);
+            return;
+        }
         String chatText = PlainTextComponentSerializer.plainText().serialize(e.message());
+        if(chatText.equals("")){
+            e.setCancelled(true);
+            return;
+        }
+        String gson;
+        Component nC = e.message();
+        if(!e.getPlayer().hasPermission("tcc.color")){
+            nC = nC.color(NamedTextColor.WHITE);
+        }
+        if(!e.getPlayer().hasPermission("tcc.decoration")){
+            nC = nC.decoration(TextDecoration.BOLD,false)
+                    .decoration(TextDecoration.UNDERLINED,false)
+                    .decoration(TextDecoration.STRIKETHROUGH,false)
+                    .decoration(TextDecoration.ITALIC,false)
+                    .decoration(TextDecoration.OBFUSCATED,false);
+        }
+//        if(e.getPlayer().hasPermission("tcc.mini")){
+//            MiniMessage mm = MiniMessage.miniMessage();
+//            nC = mm.deserialize(chatText);
+//        }
+        gson = GsonComponentSerializer.gson().serialize(
+                nC
+        );
+        Bukkit.getLogger().info(e.getPlayer().getName() + " > " + chatText);
         String prefix = PlaceholderAPI.setPlaceholders(e.getPlayer(), "%vault_prefix%");
         String coloredPrefix = ChatColorUtils.translateAlternateColorCodes('&',prefix);
         String painPrefix = prefix
@@ -105,9 +133,11 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                 .replace("&r","");
         if(chatText.charAt(0) == '$'){
             if(Objects.equals(tradeChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || tradeChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
-                String changed = chatText.substring(1);
+                String changed = gson.replaceFirst("\\$","");
+                Component changedC = GsonComponentSerializer.gson().deserialize(changed);
+                String changedP = PlainTextComponentSerializer.plainText().serialize(changedC);
                 TextChannel dev = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("dev");
-                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),changed,"trade",false,e);
+                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),changedP,"trade",false,e);
                 DiscordUtil.queueMessage(dev,"trade" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + changed);
                 if(!tradeChannelPlayers.contains(e.getPlayer())){
                     tradeChannelPlayers.add(e.getPlayer());
@@ -117,7 +147,7 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                                     .append(Component.text("中"))
                     );
                 }
-                sendChannel("trade",e.getPlayer().getName(), changed, coloredPrefix);
+                sendChannel("trade",e.getPlayer().getName(), changedC, coloredPrefix);
                 tradeChannelPlayersTime.put(e.getPlayer().getUniqueId(), 300);
                 e.setCancelled(true);
             }else{
@@ -130,9 +160,11 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
             }
         }else if(chatText.charAt(0) == '!'){
             if(Objects.equals(adChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || adChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
-                String changed = chatText.substring(1);
+                String changed = gson.replaceFirst("!","");
+                Component changedC = GsonComponentSerializer.gson().deserialize(changed);
+                String changedP = PlainTextComponentSerializer.plainText().serialize(changedC);
                 TextChannel dev = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("dev");
-                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),changed,"ad",false,e);
+                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),changedP,"ad",false,e);
                 DiscordUtil.queueMessage(dev,"ad" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + changed);
                 if(!adChannelPlayers.contains(e.getPlayer())){
                     adChannelPlayers.add(e.getPlayer());
@@ -142,7 +174,7 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                                     .append(Component.text("中"))
                     );
                 }
-                sendChannel("ad",e.getPlayer().getName(), changed, coloredPrefix);
+                sendChannel("ad",e.getPlayer().getName(), changedC, coloredPrefix);
                 adChannelPlayersTime.put(e.getPlayer().getUniqueId(), 300);
                 e.setCancelled(true);
             }else{
@@ -153,37 +185,39 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                 );
                 e.setCancelled(true);
             }
-        }else if(chatText.charAt(0) == '?'){
-            if(Objects.equals(qaChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || qaChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
-                String changed = chatText.substring(1);
-                TextChannel dev = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("dev");
-                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),changed,"qa",false,e);
-                DiscordUtil.queueMessage(dev,"qa" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + changed);
-                if(!qaChannelPlayers.contains(e.getPlayer())){
-                    qaChannelPlayers.add(e.getPlayer());
-                    e.getPlayer().sendMessage(
-                            Component.text("觀看 ")
-                                    .append(Component.text("問答頻道(qa)").color(NamedTextColor.BLUE))
-                                    .append(Component.text("中"))
-                    );
-                }
-                sendChannel("qa",e.getPlayer().getName(), changed, coloredPrefix);
-                qaChannelPlayersTime.put(e.getPlayer().getUniqueId(), 3);
-                e.setCancelled(true);
-            }else{
-                e.getPlayer().sendMessage(
-                        Component.text("需等待 ").color(TextColor.color(NamedTextColor.RED))
-                                .append(Component.text(qaChannelPlayersTime.get(e.getPlayer().getUniqueId())))
-                                .append(Component.text(" 秒後才可再次在此頻道發送訊息"))
-                );
-                e.setCancelled(true);
-            }
+//        }else if(chatText.charAt(0) == '?'){
+//            if(Objects.equals(qaChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || qaChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
+//                String changed = gson.replaceFirst("\\?","");
+//                Component changedC = GsonComponentSerializer.gson().deserialize(changed);
+//                String changedP = PlainTextComponentSerializer.plainText().serialize(changedC);
+//                TextChannel dev = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("dev");
+//                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),changedP,"qa",false,e);
+//                DiscordUtil.queueMessage(dev,"qa" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + changed);
+//                if(!qaChannelPlayers.contains(e.getPlayer())){
+//                    qaChannelPlayers.add(e.getPlayer());
+//                    e.getPlayer().sendMessage(
+//                            Component.text("觀看 ")
+//                                    .append(Component.text("問答頻道(qa)").color(NamedTextColor.BLUE))
+//                                    .append(Component.text("中"))
+//                    );
+//                }
+//                sendChannel("qa",e.getPlayer().getName(), changedC, coloredPrefix);
+//                qaChannelPlayersTime.put(e.getPlayer().getUniqueId(), 3);
+//                e.setCancelled(true);
+//            }else{
+//                e.getPlayer().sendMessage(
+//                        Component.text("需等待 ").color(TextColor.color(NamedTextColor.RED))
+//                                .append(Component.text(qaChannelPlayersTime.get(e.getPlayer().getUniqueId())))
+//                                .append(Component.text(" 秒後才可再次在此頻道發送訊息"))
+//                );
+//                e.setCancelled(true);
+//            }
         }else{
             if(Objects.equals(globalChannelPlayersTime.get(e.getPlayer().getUniqueId()),null) || globalChannelPlayersTime.get(e.getPlayer().getUniqueId()) <= 0){
                 TextChannel dev = DiscordSRV.getPlugin().getDestinationTextChannelForGameChannelName("dev");
 //                InteractiveChatDiscordSrvAddon.discordsrv.processChatMessage(e.getPlayer(),chatText,"global",false,e);
-                DiscordUtil.queueMessage(dev,"global" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + chatText);
-                sendChannel("global",e.getPlayer().getName(), chatText, coloredPrefix);
+                DiscordUtil.queueMessage(dev,"global" + "|" + coloredPrefix + "|" + e.getPlayer().getName() + "|" + gson);
+                sendChannel("global",e.getPlayer().getName(), GsonComponentSerializer.gson().deserialize(gson), coloredPrefix);
                 globalChannelPlayersTime.put(e.getPlayer().getUniqueId(), 3);
                 ableToSend.put(e.getPlayer(),true);
                 e.setCancelled(true);
@@ -199,48 +233,48 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
         }
     }
     public static Map<Player, Boolean> ableToSend = new HashMap<>();
-    public static void sendChannel(String channel, String sendPlayer, String message, String prefix){
+    public static void sendChannel(String channel, String sendPlayer, Component message, String prefix){
         if(Objects.equals(channel, "trade")){
             for(Player player : tradeChannelPlayers){
                 player.sendMessage(
-                        Component.text("$ ").color(NamedTextColor.GOLD)
+                        Component.text("").color(NamedTextColor.WHITE)
+                                .append(Component.text("$ ").color(NamedTextColor.GOLD))
                                 .append(Component.text(prefix))
                                 .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
                                 .append(Component.text("> ").color(NamedTextColor.GRAY))
-                                .append(Component.text(message).color(NamedTextColor.WHITE))
+                                .append(message)
                 );
             }
-        }
-        if(Objects.equals(channel, "ad")){
+        }else if(Objects.equals(channel, "ad")){
             for(Player player : adChannelPlayers){
                 player.sendMessage(
-                        Component.text("! ").color(NamedTextColor.AQUA)
+                        Component.text("").color(NamedTextColor.WHITE)
+                                .append(Component.text("! ").color(NamedTextColor.AQUA))
                                 .append(Component.text(prefix))
                                 .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
                                 .append(Component.text("> ").color(NamedTextColor.GRAY))
-                                .append(Component.text(message).color(NamedTextColor.WHITE))
+                                .append(message)
                 );
             }
-        }
-        if(Objects.equals(channel, "qa")){
-            for(Player player : qaChannelPlayers){
-                player.sendMessage(
-                        Component.text("? ").color(NamedTextColor.BLUE)
-                                .append(Component.text(prefix))
-                                .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
-                                .append(Component.text("> ").color(NamedTextColor.GRAY))
-                                .append(Component.text(message).color(NamedTextColor.WHITE))
-                );
-            }
-        }
-        if(Objects.equals(channel, "global")){
+//        }else if(Objects.equals(channel, "qa")){
+//            for(Player player : qaChannelPlayers){
+//                player.sendMessage(
+//                        Component.text("").color(NamedTextColor.WHITE)
+//                                .append(Component.text("? ").color(NamedTextColor.BLUE))
+//                                .append(Component.text(prefix))
+//                                .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
+//                                .append(Component.text("> ").color(NamedTextColor.GRAY))
+//                                .append(message)
+//                );
+//            }
+        }else if(Objects.equals(channel, "global")){
             for(Player player : Bukkit.getOnlinePlayers()){
                 player.sendMessage(
-                        Component.text("").color(NamedTextColor.GOLD)
+                        Component.text("").color(NamedTextColor.WHITE)
                                 .append(Component.text(prefix))
                                 .append(Component.text(sendPlayer).color(NamedTextColor.WHITE))
                                 .append(Component.text("> ").color(NamedTextColor.GRAY))
-                                .append(Component.text(message).color(NamedTextColor.WHITE))
+                                .append(message)
                 );
             }
         }
@@ -284,22 +318,22 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
                 );
             }
         }
-        if(Objects.equals(args[0], "qa") || Objects.equals(args[0], "q")){
-            if(!qaChannelPlayers.contains(sender)){
-                qaChannelPlayers.add(((Player) sender).getPlayer());
-                sender.sendMessage(
-                        Component.text("觀看 ")
-                                .append(Component.text("問答頻道(qa)").color(NamedTextColor.BLUE))
-                                .append(Component.text(" 中"))
-                );
-            }else{
-                qaChannelPlayers.remove(((Player) sender).getPlayer());
-                sender.sendMessage(
-                        Component.text("已取消觀看 ")
-                                .append(Component.text("問答頻道(qa)").color(NamedTextColor.BLUE))
-                );
-            }
-        }
+//        if(Objects.equals(args[0], "qa") || Objects.equals(args[0], "q")){
+//            if(!qaChannelPlayers.contains(sender)){
+//                qaChannelPlayers.add(((Player) sender).getPlayer());
+//                sender.sendMessage(
+//                        Component.text("觀看 ")
+//                                .append(Component.text("問答頻道(qa)").color(NamedTextColor.BLUE))
+//                                .append(Component.text(" 中"))
+//                );
+//            }else{
+//                qaChannelPlayers.remove(((Player) sender).getPlayer());
+//                sender.sendMessage(
+//                        Component.text("已取消觀看 ")
+//                                .append(Component.text("問答頻道(qa)").color(NamedTextColor.BLUE))
+//                );
+//            }
+//        }
         return true;
     }
     public List<String> onTabComplete(CommandSender sender, Command cmd, String label, String[] args){
