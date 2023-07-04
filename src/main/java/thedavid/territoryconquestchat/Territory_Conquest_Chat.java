@@ -348,8 +348,8 @@ public final class Territory_Conquest_Chat extends JavaPlugin implements Listene
         list.add("t");
         list.add("ad");
         list.add("a");
-        list.add("qa");
-        list.add("q");
+//        list.add("qa");
+//        list.add("q");
         return list;
     }
     @EventHandler
